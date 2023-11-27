@@ -1,0 +1,155 @@
+use pubs;
+
+select table_name
+from information_schema.tables;
+
+
+-- 1. Add new column to products table that stores tax rate for the products update tax rate to 12% to all products.
+use msdb;
+
+alter table products 
+add tax_rate int;
+
+update products
+set tax_rate = 12;
+select * from products;
+
+
+-- 2. Display titles that End with 's'/'t'.
+use pubs;
+select title from titles where title like '%s' or title like '%t';
+
+-- 3. Display books of type business, psychology & undecided.
+select title from titles where type in ('business','psychology','undecided');
+
+-- 4. Display titles where the sales>5,000 & royality<20.
+select title  from titles where ytd_sales>5000 and royalty<20;
+
+-- 5. Display titles in the ascending of sales for publisher 0736.
+select title from titles where pub_id=0736 order by ytd_sales;
+
+-- 6. Display the difference between maximum & minimum royality of books published day publisher 0877.
+select max(royalty)- min(royalty) from titles where pub_id=0877;
+
+-- 7. Display author_id & no of books written by Author.
+select au_id , count(title_id) from titleauthor group by au_id;
+
+-- 8. Display how many authors are there for each title.
+select title_id,count(au_id) from titleauthor group by title_id;
+
+-- 9. Display average royality % for authors with order 1.
+select au_id,avg(royaltyper) from titleauthor where au_ord=1 group by au_id;
+
+-- 10. Display titles in the order of price if sales are in the range 10k to 20k.
+select title,ytd_sales from titles where ytd_sales between 10000 and  20000 order by price;
+
+-- 11. Display how many authors are in the city Menlo park.
+select count(au_id) from authors where city = 'Menlo Park';
+
+-- 12. Display state and no of authors we have in the state in the order of state.
+select state, count(au_id) from authors group by state order by state;
+
+-- 13. Display States in which we have more than 2 authors, with 1st name starting with 's'.
+select state from authors where au_fname like 's%' group by state having count(au_id)>2;
+
+--Assignment 15
+-- 1. Display title after replacing all spaces with (dots) and (hypens) with (stars).
+Select replace(replace(title,' ','.'),'-','*') from titles;
+
+-- 2. Display title by Removing all spaces.
+Select replace (title,' ','') from titles;
+
+-- 3. Display first word in the title.
+Select SUBSTRING(title,0,2) from titles;
+
+-- 4. Display month and no of books published.
+select month(pubdate),count(title_id) from titles group by month(pubdate);
+
+-- 5. Display title , publisher name for titles where the publisher is in USA.
+select t.title, p.pub_name from publishers p inner join titles t on t.pub_id=p.pub_id where p.country = 'USA';
+
+-- 6. Display publisher name and average price of books.
+select p.pub_name, avg(t.price) from publishers p inner join titles t on p.pub_id=t.pub_id group by p.pub_name;
+
+-- 7. Display City of author and then no of books written by authors in the City.
+select a.city,count(t.title_id) from titles t 
+inner join titleauthor ta on t.title_id = ta.title_id 
+inner join authors a on ta.au_id= a.au_id group by a.city; 
+
+-- 8. Display auther name, title for all authors including the once without a title.
+select concat(a.au_fname,' ',a.au_lname),t.title from titles t 
+right join titleauthor ta on t.title_id = ta.title_id 
+right join authors a on ta.au_id= a.au_id;
+
+-- 9. Display title publisher name and author name of the primary author.
+select t.title,concat(a.au_fname,' ',a.au_lname) as author_name, p.pub_name from publishers p
+right join titles t on t.pub_id = p.pub_id 
+right join titleauthor ta on t.title_id = ta.title_id 
+right join authors a on ta.au_id= a.au_id
+where ta.au_ord=1;
+
+-- 10. Display City of publisher and maximum price & all titles.
+select p.pub_id,p.city,t.title, t.price,
+(select max(price) from titles t2 where t2.pub_id = p.pub_id) as max_price
+from publishers p
+join titles t on p.pub_id = t.pub_id;
+
+
+-- 11. Display titles written by any author in City (menlo park).
+select t.title from titles t 
+join titleauthor ta on t.title_id = ta.title_id 
+join authors a on ta.au_id= a.au_id
+where a.city = 'menlo park';
+
+-- 12. Display publishers who published a titles in 1991.
+select p.pub_id,p.pub_name 
+from publishers p 
+inner join titles t 
+on t.pub_id=p.pub_id 
+where year(t.pubdate)=1991;
+
+-- 13. Display titles not published in USA.
+select t.title,p.country from titles t right join publishers p
+on p.pub_id = t.pub_id where p.country!='USA';
+
+-- 14. Display titles either published in USA (or) having price <5.
+select t.title from titles t join publishers p
+on p.pub_id = t.pub_id where p.country='USA' or t.price>5;
+
+-- 15. create a view to contain title, publisher, year of publishing, price and type. 
+-- Make sure when price is null display zero and type is null display Zero.
+create view  newview (title,publisher,year_of_publishing,price_of_title,type_of_book) 
+as select title,pub_name,year(pubdate),ISNULL(price,0),type  
+from titles t join publishers p on(p.pub_id=t.pub_id); 
+
+-- 16. Display publishers who published books by author who wrote more than 2 titles.
+select p.pub_id, p.pub_name from publishers p 
+join titles t on p.pub_id = t.pub_id
+join titleauthor ta on ta.title_id= t.title_id
+group by p.pub_id,p.pub_name
+having count(ta.title_id)>2;
+
+-- 17. Delete rows from title author for author with first_name as dean.
+
+delete from titleauthor
+where au_id in (select au_id from authors where au_fname = 'dean');
+
+-- 18. Update the price of the book BU1111 with the Price of book MC2222.
+UPDATE titles	
+set price=(Select price from titles where title_id='MC2222')	
+where  title_id='BU1111';
+
+-- 19. Display titles published in last 25 years.
+select title from titles where year(pubdate) between year(getdate())-25 and year(getdate());
+
+-- 20. Display titles published by any publisher who published a title in 2021.
+select title from titles where year(pubdate)=2021;
+
+-- 21. Create a view to display publisher name, city, and no of books published.
+create view publisherview(pub_name,pub_city,no_of_books)
+AS
+select p.pub_name, p.city,count(t.title_id) from publishers p
+right join titles t on p.pub_id = t.pub_id
+group by p.pub_name,p.city;
+
+
